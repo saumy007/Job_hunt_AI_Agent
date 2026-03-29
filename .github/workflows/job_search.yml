@@ -2,10 +2,7 @@ name: AI Job Referral Agent
 
 on:
   schedule:
-    # Run every 6 hours (adjust as needed)
     - cron: '0 */6 * * *'
-  
-  # Allow manual trigger
   workflow_dispatch:
 
 jobs:
@@ -21,16 +18,21 @@ jobs:
       with:
         python-version: '3.11'
     
-    # REMOVED CACHE - Forces fresh install to fix version issues
-    # - name: Cache dependencies
-    #   uses: actions/cache@v4
-    
-    - name: Install dependencies
+    - name: Install dependencies (with forced cleanup)
       run: |
         python -m pip install --upgrade pip
+        pip uninstall -y anthropic httpx || true
+        pip install --no-cache-dir anthropic==0.39.0
+        pip install --no-cache-dir httpx==0.27.2
         pip install --no-cache-dir -r requirements.txt
     
-    - name: Install Chrome and ChromeDriver (for Selenium)
+    - name: Verify versions
+      run: |
+        echo "Checking installed versions..."
+        pip show anthropic | grep Version
+        pip show httpx | grep Version
+    
+    - name: Install Chrome and ChromeDriver
       run: |
         sudo apt-get update
         sudo apt-get install -y chromium-browser chromium-chromedriver
@@ -53,3 +55,45 @@ jobs:
         path: |
           *.log
           **/*.log
+```
+
+**Key changes**:
+1. `pip uninstall -y anthropic httpx || true` → Force remove old versions
+2. Install `anthropic==0.39.0` explicitly first
+3. Install `httpx==0.27.2` explicitly second
+4. Added "Verify versions" step to show what's actually installed
+
+---
+
+## 📋 Step-by-Step: Update the Workflow
+
+1. **Go to `.github/workflows/job_search.yml`**
+2. **Click the pencil icon ✏️**
+3. **Delete all content**
+4. **Paste the workflow above**
+5. **Commit changes**: "Force uninstall old anthropic version"
+6. **Go to Actions tab**
+7. **Run workflow**
+8. **Check the "Verify versions" step** - should show:
+```
+   Version: 0.39.0  (for anthropic)
+   Version: 0.27.2  (for httpx)
+```
+
+---
+
+## 🎯 What This Will Show You
+
+After running, look at the **"Verify versions"** step output:
+
+✅ **Good output**:
+```
+Checking installed versions...
+Version: 0.39.0
+Version: 0.27.2
+```
+
+❌ **Bad output**:
+```
+Version: 0.18.0
+Version: [something old]
